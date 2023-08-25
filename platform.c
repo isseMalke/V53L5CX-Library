@@ -18,9 +18,10 @@
 #define ACK_VAL                         0x0
 #define NACK_VAL                        0x1
 
-uint8_t _i2c_buffer[32769];
+uint8_t _i2c_buffer[I2C_NUM_MAX + 1][0x8002]; // 0x8000 is the max size the api will use, 2 more are needed for register specifier
 
-int _i2c_write(VL53L5CX_Platform *p_platform, uint8_t *buf, uint32_t len) {
+int _i2c_write(VL53L5CX_Platform *p_platform, uint8_t *buf, uint32_t len) 
+{
 
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
@@ -29,14 +30,14 @@ int _i2c_write(VL53L5CX_Platform *p_platform, uint8_t *buf, uint32_t len) {
     i2c_master_stop(cmd);
     esp_err_t ret = i2c_master_cmd_begin(p_platform->port, cmd, 1000 / portTICK_PERIOD_MS);
     i2c_cmd_link_delete(cmd);
-
     if (ret != ESP_OK) {
         return 1;
     }
     return 0;
 }
 
-int _i2c_read(VL53L5CX_Platform *p_platform, uint8_t *buf, uint32_t len) {
+int _i2c_read(VL53L5CX_Platform *p_platform, uint8_t *buf, uint32_t len) 
+{
 
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
@@ -48,7 +49,6 @@ int _i2c_read(VL53L5CX_Platform *p_platform, uint8_t *buf, uint32_t len) {
     i2c_master_stop(cmd);
     esp_err_t ret = i2c_master_cmd_begin(p_platform->port, cmd, 1000 / portTICK_PERIOD_MS);
     i2c_cmd_link_delete(cmd);
-
     if (ret != ESP_OK) {
         return 1;
     }
@@ -59,10 +59,10 @@ uint8_t RdByte(VL53L5CX_Platform *p_platform, uint16_t RegisterAdress, uint8_t *
 
     int32_t status_int;
 
-    _i2c_buffer[0] = RegisterAdress >> 8;
-    _i2c_buffer[1] = RegisterAdress & 0xFF;
+    _i2c_buffer[p_platform->port][0] = RegisterAdress >> 8;
+    _i2c_buffer[p_platform->port][1] = RegisterAdress & 0xFF;
 
-    status_int = _i2c_write(p_platform, _i2c_buffer, 2);
+    status_int = _i2c_write(p_platform, _i2c_buffer[p_platform->port], 2);
     if (status_int) {
 
         return 1;
@@ -73,24 +73,24 @@ uint8_t RdByte(VL53L5CX_Platform *p_platform, uint16_t RegisterAdress, uint8_t *
 
 uint8_t WrByte(VL53L5CX_Platform *p_platform, uint16_t RegisterAdress, uint8_t value) {
 
-    _i2c_buffer[0] = RegisterAdress >> 8;
-    _i2c_buffer[1] = RegisterAdress & 0xFF;
-    _i2c_buffer[2] = value;
+    _i2c_buffer[p_platform->port][0] = RegisterAdress >> 8;
+    _i2c_buffer[p_platform->port][1] = RegisterAdress & 0xFF;
+    _i2c_buffer[p_platform->port][2] = value;
 
-    return _i2c_write(p_platform, _i2c_buffer, 3);
+    return _i2c_write(p_platform, _i2c_buffer[p_platform->port], 3);
 }
 
 uint8_t WrMulti(VL53L5CX_Platform *p_platform, uint16_t RegisterAdress, uint8_t *p_values, uint32_t size) {
     int status_int;
 
-    if (size > sizeof(_i2c_buffer) - 1) {
+    if (size > sizeof(_i2c_buffer[p_platform->port]) - 1) {
         return 1;
     }
-    _i2c_buffer[0] = RegisterAdress >> 8;
-    _i2c_buffer[1] = RegisterAdress & 0xFF;
-    memcpy(&_i2c_buffer[2], p_values, size);
+    _i2c_buffer[p_platform->port][0] = RegisterAdress >> 8;
+    _i2c_buffer[p_platform->port][1] = RegisterAdress & 0xFF;
+    memcpy(&_i2c_buffer[p_platform->port][2], p_values, size);
 
-    status_int = _i2c_write(p_platform, _i2c_buffer, size + 2);
+    status_int = _i2c_write(p_platform, _i2c_buffer[p_platform->port], size + 2);
     if (status_int != 0) {
         return 1;
     }
@@ -100,10 +100,10 @@ uint8_t WrMulti(VL53L5CX_Platform *p_platform, uint16_t RegisterAdress, uint8_t 
 uint8_t RdMulti(VL53L5CX_Platform *p_platform, uint16_t RegisterAdress, uint8_t *p_values, uint32_t size) {
     int32_t status_int;
 
-    _i2c_buffer[0] = RegisterAdress >> 8;
-    _i2c_buffer[1] = RegisterAdress & 0xFF;
+    _i2c_buffer[p_platform->port][0] = RegisterAdress >> 8;
+    _i2c_buffer[p_platform->port][1] = RegisterAdress & 0xFF;
 
-    status_int = _i2c_write(p_platform, _i2c_buffer, 2);
+    status_int = _i2c_write(p_platform, _i2c_buffer[p_platform->port], 2);
     if (status_int != 0) {
         return 1;
 
